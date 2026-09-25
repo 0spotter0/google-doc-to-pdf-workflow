@@ -1,0 +1,22 @@
+{
+  "name": "google-doc-to-pdf-workflow",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "export:pdf": "node scripts/export-pdf.mjs",
+    "script:push": "clasp push -f",
+    "script:pull": "clasp pull"
+  },
+  "dependencies": {
+    "next": "^15.5.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "googleapis": "^144.0.0"
+  }
+}

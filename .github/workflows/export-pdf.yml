@@ -1,0 +1,65 @@
+name: Export Doc to PDF & Deploy
+
+# Triggered by the Apps Script "PDF Publish" menu via the repository_dispatch API,
+# or manually from the Actions tab.
+on:
+  repository_dispatch:
+    types: [export-pdf]
+  workflow_dispatch:
+
+# Minimal token scope: read the repo, publish to Pages via OIDC.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deploy at a time; newer triggers supersede in-flight ones.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Export PDF from Google Doc
+        env:
+          # Prefer the docId sent by Apps Script; fall back to the repo variable.
+          GOOGLE_DOC_ID: ${{ github.event.client_payload.docId || vars.GOOGLE_DOC_ID }}
+          GDRIVE_SA_KEY: ${{ secrets.GDRIVE_SA_KEY }}
+          OUTPUT_PATH: public/document.pdf
+        run: pnpm run export:pdf
+
+      - name: Build static site
+        env:
+          # Project Pages are served from /<repo>, so assets need that basePath.
+          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+        run: pnpm build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
